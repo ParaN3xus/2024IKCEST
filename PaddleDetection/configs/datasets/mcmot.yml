@@ -1,0 +1,23 @@
+num_classes: 228
+
+# for MCMOT training
+TrainDataset:
+  !MCMOTDataSet
+    dataset_dir: ./work/dataset # 需要更改为自己对应的文件目录下
+    image_lists: ['IKCEST.train']
+    data_fields: ['image', 'gt_bbox', 'gt_class', 'gt_ide']
+    label_list: label_list.txt
+
+EvalMOTDataset:
+  !MOTImageFolder
+    dataset_dir: ./work/dataset
+    data_root: IKCEST/images/test/
+    keep_ori_im: False # set True if save visualization images or video, or used in DeepSORT
+    anno_path: label_list.txt
+
+# for MCMOT video inference
+TestMOTDataset:
+  !MOTImageFolder
+    dataset_dir: ./work/dataset
+    keep_ori_im: True # set True if save visualization images or video
+    anno_path: label_list.txt
