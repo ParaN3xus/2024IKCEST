@@ -1,6 +1,7 @@
 .venv
 data/data272560/*.zip
 data/*.zip
+data/stage2/*
 mcfairmot_dla34_30e_1088x608_visdrone_vehicle_bytetracker
 work/dataset/IKCEST/images
 work/dataset/IKCEST/labels_with_ids
