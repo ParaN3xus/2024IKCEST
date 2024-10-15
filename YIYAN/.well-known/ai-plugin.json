@@ -1,0 +1,20 @@
+{
+    "schema_version": "v1",
+    "name_for_human": "2024IKCEST球赛解说生文",
+    "name_for_model": "2024IKCESTSoccerMatchPromptGen",
+    "description_for_human": "读取视频内容，使用算法生成比赛解说文案",
+    "description_for_model": "读取视频内容，使用算法生成比赛解说文案",
+    "auth": {
+        "type": "none"
+    },
+    "api": {
+        "type": "openapi",
+        "url": "PLUGIN_HOST/.well-known/openapi.yaml"
+    },
+    "logo_url": "PLUGIN_HOST/logo.png",
+    "contact_email": "contact@typst.dev",
+    "legal_info_url": "https://typst.dev/legal",
+    "examples": {
+        "url": "PLUGIN_HOST/example.yaml"
+    }
+}

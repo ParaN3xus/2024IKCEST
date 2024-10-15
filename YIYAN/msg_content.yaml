@@ -1,0 +1,29 @@
+# yaml 文件中定义的 operationId
+create:
+  # 标识插件调用失败的错误码和文案
+  error:
+    - errCode: failed
+      actionName: 生成视频
+      actionContent: 画面生成失败，建议您换一个话题，更新描述后可再次尝试
+    - errCode: STG.aft.person_refused
+      actionName: 生成视频失败
+      actionContent: 我没有学习过指定人物的视频生成能力，请更新描述后可再次尝试
+  success:
+  # errCode = 0 是默认成功，无需单独定义
+  # 有时使用sse返回，执行过程中有很多过程，都应该定义为成功
+    - errCode: doing
+      actionName: 开始执行
+      actionContent: 开始执行视频生成
+    - errCode: complete
+      actionName: 执行完成
+      actionContent: 视频生成完成
+
+# 可定义通用的错误码和文案，将为每一个 api 追加 common 中的内容
+# common为保留字，如果将一个 api 的 operationId 定义为了 common，此处定义的错误码仍会生效到每一个 api 上
+common:
+  # 同上
+  error:
+    # 如果错误码与其他 operationId 中定义的相同，以其他 operationId 为准
+    - errCode: -1
+      actionName: 鉴权失败
+      actionContent: 鉴权信息已过期，请重新登录

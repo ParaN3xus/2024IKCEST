@@ -9,3 +9,5 @@ work/dataset/image_lists
 PaddleDetection.zip
 
 output/*
+
+YOLOX/datasets/MOT20/test/*/img1/*
