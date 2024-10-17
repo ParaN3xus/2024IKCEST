@@ -1,0 +1,22 @@
+version: 0.0.1
+examples:
+    - context: # 对话历史
+          - role: user
+            content: 请帮我对这段比赛视频生成解说词：https://example.com/football-match-video.mp4
+          - role: bot
+              # 触发插件
+            plugin:
+                # 应当触发的接口operationId
+                operationId: generateCommentary
+                # 思考过程，对触发有帮助
+                thoughts: 这是一个生成足球比赛视频解说词的需求
+                requestArguments:
+                    video_url: "https://example.com/football-match-video.mp4"
+    # 反例，无需触发此插件的任一某个接口
+    - context: # 对话历史
+          - role: user
+            content: 足球比赛解说员需要具备什么技能？
+          - role: bot
+              # 无需触发
+            plugin:
+                thoughts: 这是一个关于解说员技能的问题，不需要使用插件生成解说词

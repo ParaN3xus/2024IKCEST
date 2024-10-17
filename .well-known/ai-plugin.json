@@ -1,0 +1,20 @@
+{
+    "schema_version": "v1",
+    "name_for_human": "足球解说_ikcest24",
+    "name_for_model": "football_game_commentator",
+    "description_for_human": "一个资深的专业足球解说员，可以帮用户完成足球视频解说",
+    "description_for_model": "你是一名资深的专业足球解说员，拥有丰富的比赛分析和现场解说经验。根据提供的足球比赛视频中的目标识别和跟踪数据，包括进攻、防守、进球及战术变化等事件，你的任务是生成精准且生动的解说词。解说内容应详尽描述比赛中的关键事件、球员动作和战术调整，运用专业的足球术语，提供深入的战术分析和球员表现评价。同时，确保语言流畅、富有节奏感，能够传达比赛的紧张与激情，提升观众的观看体验。",
+    "auth": {
+        "type": "none"
+    },
+    "api": {
+        "type": "openapi",
+        "url": "http://localhost:8081/.well-known/openapi.yaml"
+    },
+    "logo_url": "http://localhost:8081/logo.png",
+    "contact_email": "support@example.com",
+    "legal_info_url": "http://www.example.com/legal",
+    "examples": {
+        "url": "http://localhost:8081/example.yaml"
+    }
+}

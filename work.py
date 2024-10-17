@@ -46,6 +46,10 @@ async def run_ghost():
     await run_command(command, cwd="GHOST")
     command = "python rescale.py"
     await run_command(command, cwd="GHOST")
+
+async def run_jersey_number_pipeline():
+    command = "python3 main.py SoccerNet test"
+    await run_command(command, cwd="jersey-number-pipeline")
     
 async def extract_images(csv_folder, images_base_folder, videos_base_folder, csv_file):
     video_name = csv_file.split('.')[0]
@@ -105,6 +109,7 @@ async def run(url: str):
 
     await run_ghost()
     await extract_csv()
+    await run_jersey_number_pipeline()
     
 
 

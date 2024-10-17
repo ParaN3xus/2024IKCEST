@@ -1,0 +1,6 @@
+flask[async]
+flask_cors
+opencv-python
+bs4
+requests
+asyncio

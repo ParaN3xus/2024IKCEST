@@ -1,0 +1,67 @@
+openapi: 3.0.1
+info:
+    title: 足球解说
+    description: 一个资深的专业足球解说员，可以帮用户完成足球视频解说
+    version: "v1"
+servers:
+    - url: http://localhost:8081  # 替换成你实际服务启动的地址和端口，调试环境可以是localhost，正式上线需要换成公网IP
+paths:
+    /generate_commentary:
+        post:
+            operationId: generateCommentary
+            summary: 上传足球比赛视频链接并生成解说词
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/GenerateCommentaryRequest"
+            responses:
+                "200":
+                    description: 解说词生成成功
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/GenerateCommentaryResponse"
+                "400":
+                    description: 无效的请求参数
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+                "500":
+                    description: 服务器内部错误
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+    schemas:
+        GenerateCommentaryRequest:
+            type: object
+            required:
+                - video_url
+            properties:
+                video_url:
+                    type: string
+                    format: uri
+                    description: 足球比赛视频的URL链接
+
+        GenerateCommentaryResponse:
+            type: object
+            required:
+                - commentary
+            properties:
+                commentary:
+                    type: string
+                    description: 根据视频生成的解说词
+
+        ErrorResponse:
+            type: object
+            required:
+                - message
+            properties:
+                message:
+                    type: string
+                    description: 错误信息描述
