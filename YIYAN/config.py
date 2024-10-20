@@ -2,7 +2,7 @@ import os
 
 class VideoProcessConfig:
     # 视频帧截取间隔（秒）
-    CAPTURE_EVERY = 1
+    CAPTURE_EVERY = 1/30
 
 class PaddleDetectionConfig:
     MODEL_DIR = os.path.join(os.getcwd(), "video_process", "paddle_detection", "model")

@@ -9,12 +9,12 @@
     },
     "api": {
         "type": "openapi",
-        "url": "http://localhost:8081/.well-known/openapi.yaml"
+        "url": "PLUGIN_HOST/.well-known/openapi.yaml"
     },
-    "logo_url": "http://localhost:8081/logo.png",
+    "logo_url": "PLUGIN_HOST/logo.png",
     "contact_email": "support@example.com",
     "legal_info_url": "http://www.example.com/legal",
     "examples": {
-        "url": "http://localhost:8081/example.yaml"
+        "url": "PLUGIN_HOST/example.yaml"
     }
 }

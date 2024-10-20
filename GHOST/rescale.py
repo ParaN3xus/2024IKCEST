@@ -45,12 +45,12 @@ def process_all_tracking_files(tracking_dir, output_dir, scale_x, scale_y):
             print(f'done: {output_file}')
 
 # 参数设定
-tracking_dir = 'out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1KalmanInactPat:50DetConf:0.45NewTrackConf:0.6'
+tracking_dir = 'out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6'
 output_dir = 'out/scaled'
 
 # 缩放参数
-scale_x = 3.0
-scale_y = 3.0
+scale_x = 6.0
+scale_y = 6.0
 
 # 处理所有文件
 process_all_tracking_files(tracking_dir, output_dir, scale_x, scale_y)
