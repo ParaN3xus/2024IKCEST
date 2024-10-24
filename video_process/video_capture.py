@@ -70,9 +70,9 @@ def capture_frames(video_path, output_base_dir=YOLOXConfig.DATASET_DIR):
 
 def extract_and_save_match_info(frame):
     ocr = PaddleOCR(use_angle_cls=True, lang='ch')
-    time_left, time_top, time_width, time_height = 3400, 130, 200, 50
-    team1_left, team1_top, team1_width, team1_height = 2492, 125, 282, 60
-    team2_left, team2_top, team2_width, team2_height = 2908, 128, 268, 55
+    time_left, time_top, time_width, time_height = 3352, 121, 293, 61
+    team1_left, team1_top, team1_width, team1_height = 2450, 118, 336, 74
+    team2_left, team2_top, team2_width, team2_height = 2896, 119, 333, 69
 
     time_roi = frame[time_top:time_top + time_height, time_left:time_left + time_width]
     team1_roi = frame[team1_top:team1_top + team1_height, team1_left:team1_left + team1_width]
