@@ -73,8 +73,8 @@ def create_videos(tracking_dir, images_base_dir, output_dir, scale_x, scale_y):
         logging.info(f'Generated video: {video_path}')
 
 # 参数设定
-tracking_dir = 'out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6'
-images_base_dir = 'datasets/MOT20/test'
+tracking_dir = 'GHOST/out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6'
+images_base_dir = 'YOLOX/datasets/MOT20/test'
 output_dir = 'output_videos'
 
 # 你可以调整这些缩放参数

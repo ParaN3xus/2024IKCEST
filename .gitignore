@@ -9,3 +9,8 @@ work/dataset/image_lists
 PaddleDetection.zip
 
 output/*
+
+GHOST/datasets/*
+GHOST/out/*
+jersey-number-pipeline/out/*
+YOLOX/datasets/*
