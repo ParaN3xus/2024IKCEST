@@ -61,6 +61,31 @@ def load_and_filter_image(image_path):
     return filtered_pixels
 
 
+# 本来想着是直接另开个函数的但是看不懂你们下面 filtered_pixels 是个什么东西而且我发现我这个函数里的东西跟你们下面实现的好像差不多所以就直接把 lower 和 upper 复制到你们代码里了
+# def crop_green_background(image):
+#     """Remove green areas from the image and save as PNG with transparency."""
+#     # Convert the image from BGR to RGB
+#     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+#     # Define a range for green color in RGB (adjust as needed)
+#     lower_green = np.array([0, 100, 0], dtype=np.uint8)
+#     upper_green = np.array([150, 255, 150], dtype=np.uint8)
+
+#     # Create a mask for green areas
+#     mask = cv2.inRange(image_rgb, lower_green, upper_green)
+
+#     image_rgb[mask != 0] = [0, 0, 0]
+
+#     # Create an alpha channel (transparent where green is detected)
+#     alpha_channel = np.ones(mask.shape, dtype=mask.dtype) * 255  # Full opacity
+#     alpha_channel[mask != 0] = 0  # Make green areas transparent
+
+#     # Create the 4-channel image (RGB + Alpha)
+#     image_rgba = np.dstack((image_rgb, alpha_channel))
+
+#     return cv2.cvtColor(image_rgba, cv2.COLOR_RGBA2BGRA)
+
+
 import matplotlib.pyplot as plt
 
 
@@ -71,6 +96,8 @@ def extract_center_average_colors(image_path):
         if image is None:
             print(f"Error: {image_path} not found")
             return np.array([0, 0, 0])
+        
+        # image = crop_green_background(image)
 
         # 裁剪中间部分：1/4 高度和 1/2 宽度
         h, w, _ = image.shape
@@ -84,8 +111,8 @@ def extract_center_average_colors(image_path):
 
         # 去除草地颜色
         image_rgb = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-        green_lower = np.array([0, 100, 0])
-        green_upper = np.array([100, 255, 100])
+        green_lower = np.array([0, 100, 0], dtype=np.uint8)
+        green_upper = np.array([150, 255, 150], dtype=np.uint8)
         grass_mask = cv2.inRange(image_rgb, green_lower, green_upper) > 0
         filtered_pixels = image_rgb[~grass_mask]
 
