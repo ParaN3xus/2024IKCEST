@@ -313,8 +313,8 @@ def main():
         if not track_id.startswith("SNMOT"):
             continue
         image_path = get_first_file(os.path.join(ORIGINAL_IMAGES_DIR, track_id))
-        avg_color = extract_center_average_color(image_path)
-        new_average_colors[track_id] = avg_color
+        avg_colors = extract_center_average_color(image_path)
+        new_average_colors[track_id] = avg_colors
 
     final_team_mapping, unknown_team_player = classify_new_players(
         average_colors, new_average_colors, track_ids

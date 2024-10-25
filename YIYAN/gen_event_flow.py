@@ -9,6 +9,7 @@ import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
+from datetime import datetime, timedelta
 import logging
 
 logging.basicConfig(
@@ -21,26 +22,69 @@ logging.basicConfig(
 )
 
 # 参数
-max_distance = 100
-max_gap = 2
-small_window = 5
-angle_threshold = 45
-position_threshold = 30
-post_header_frames = 5
-min_visible_frames = 2
-distance_threshold = 200
-min_fall_frames = 30
-carry_distance = 100
-carry_consistency = 15
-max_id_changes = 2
-carry_distance_pass = 200
-confidence_frames = 5
-duration_seconds = 3
-frame_rate = 30
-missing_threshold = 0.9
-angle_threshold_vertical = 30
-x_threshold_vertical = 20
-min_shot_frames_around = 15
+MAX_DISTANCE = 100
+MAX_GAP = 2
+SMALL_WINDOW = 5
+ANGLE_THRESHOLD = 45
+POSITION_THRESHOLD = 30
+POST_HEADER_FRAMES = 5
+MIN_VISIBLE_FRAMES = 2
+DISTANCE_THRESHOLD = 200
+MIN_FALL_FRAMES = 30
+CARRY_DISTANCE = 100
+CARRY_CONSISTENCY = 15
+MAX_ID_CHANGES = 2
+CARRY_DISTANCE_PASS = 200
+CONFIDENCE_FRAMES = 5
+DURATION_SECONDS = 3
+FRAME_RATE = 30
+MISSING_THRESHOLD = 0.9
+ANGLE_THRESHOLD_VERTICAL = 30
+X_THRESHOLD_VERTICAL = 20
+MIN_SHOT_FRAMES_AROUND = 15
+TRACKING_FILES_PATH = '../GHOST/out/scaled/'
+BALL_TRACKS_PATH = '../jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json'
+PLAYER_INFO_PATH = '../jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json'
+IMAGE_FOLDER = '../GHOST/datasets/MOT20/test/'
+
+def convert_time_to_seconds(time_str):
+    minutes, seconds = map(int, time_str.split(":"))
+    return minutes * 60 + seconds
+
+def calculate_timestamp(frame_number, start_time_seconds, fps=30):
+    total_seconds = start_time_seconds + frame_number / fps
+    minutes, seconds = divmod(total_seconds, 60)
+    milliseconds = (total_seconds - int(total_seconds)) * 1000
+    return f"{int(minutes)}:{int(seconds):02d}.{int(milliseconds):03d}"
+
+def merge_events(events):
+    def parse_timestamp(ts):
+        mins, secs = map(float, ts.split(':'))
+        return int(mins * 60 * 1000 + secs * 1000)
+    
+    def merge_similar_events(events, time_threshold_ms):
+        merged_events = []
+        last_event = None
+        
+        for event in events:
+            if last_event and event['type'] == last_event['type'] and event['team'] == last_event['team'] and event['player'] == last_event['player']:
+                current_time = parse_timestamp(event['timestamp'])
+                last_time = parse_timestamp(last_event['timestamp'])
+                if current_time - last_time <= time_threshold_ms:
+                    continue
+            
+            if last_event:
+                merged_events.append(last_event)
+            
+            last_event = event
+        if last_event:
+            merged_events.append(last_event)
+
+        return merged_events
+
+    events.sort(key=lambda x: parse_timestamp(x['timestamp']))
+    merged_events = merge_similar_events(events, time_threshold_ms=333)
+    return merged_events
 
 def load_csv_multiple(tracking_files_path):
     all_files = sorted(glob.glob(os.path.join(tracking_files_path, 'SNMOT-*.txt')))
@@ -126,7 +170,7 @@ def initialize_kalman_filter():
                      [0, 5]])
     return kf
 
-def confirm_ball_tracks_with_kalman(frame_dict, ball_track_ids, max_distance=200, max_gap=2):
+def confirm_ball_tracks_with_kalman(frame_dict, ball_track_ids, max_distance=MAX_DISTANCE, max_gap=MAX_GAP):
     all_frames = sorted(frame_dict.keys())
     ball_tracks_confirmed = []
     last_position = None
@@ -188,7 +232,7 @@ def confirm_ball_tracks_with_kalman(frame_dict, ball_track_ids, max_distance=200
 
     return ball_tracks_confirmed
 
-def detect_headers(ball_tracks_confirmed, player_info, frame_dict, small_window=5, angle_threshold=45, position_threshold=30, post_header_frames=5, min_visible_frames=2):
+def detect_headers(ball_tracks_confirmed, player_info, frame_dict, small_window=SMALL_WINDOW, angle_threshold=ANGLE_THRESHOLD, position_threshold=POSITION_THRESHOLD, post_header_frames=POST_HEADER_FRAMES, min_visible_frames=MIN_VISIBLE_FRAMES):
     headers = []
     ball_tracks_sorted = sorted(ball_tracks_confirmed, key=lambda x: x['frame'])
     frames = [bt['frame'] for bt in ball_tracks_sorted]
@@ -269,7 +313,7 @@ def detect_headers(ball_tracks_confirmed, player_info, frame_dict, small_window=
                                 })
     return headers
 
-def detect_falls(frame_dict, player_info, distance_threshold=200, min_fall_frames=30):
+def detect_falls(frame_dict, player_info, distance_threshold=DISTANCE_THRESHOLD, min_fall_frames=MIN_FALL_FRAMES):
     falls = []
     all_frames = sorted(frame_dict.keys())
     player_states = {player_id: {'falling': False, 'fall_frames': 0} for player_id in player_info.keys()}
@@ -325,7 +369,7 @@ def detect_falls(frame_dict, player_info, distance_threshold=200, min_fall_frame
 
     return falls
 
-def detect_ball_carries(ball_tracks_confirmed, player_info, frame_dict, carry_distance=100, carry_consistency=15, max_id_changes=2):
+def detect_ball_carries(ball_tracks_confirmed, player_info, frame_dict, carry_distance=CARRY_DISTANCE, carry_consistency=CARRY_CONSISTENCY, max_id_changes=MAX_ID_CHANGES):
     carries = []
     carry_tracker = {}
 
@@ -415,7 +459,7 @@ def detect_ball_carries(ball_tracks_confirmed, player_info, frame_dict, carry_di
 
     return final_carries
 
-def detect_passes(ball_tracks_confirmed, player_info, frame_dict, carry_distance=200, confidence_frames=5):
+def detect_passes(ball_tracks_confirmed, player_info, frame_dict, carry_distance=CARRY_DISTANCE_PASS, confidence_frames=CONFIDENCE_FRAMES):
     passes = []
     current_possessor = None
     possessor_start_frame = None
@@ -497,7 +541,7 @@ def detect_passes(ball_tracks_confirmed, player_info, frame_dict, carry_distance
 
     return merged_passes
 
-def detect_intense_periods(ball_tracks_confirmed, frame_dict, duration_seconds=3, frame_rate=30, missing_threshold=0.9):
+def detect_intense_periods(ball_tracks_confirmed, frame_dict, duration_seconds=DURATION_SECONDS, frame_rate=FRAME_RATE, missing_threshold=MISSING_THRESHOLD):
     intense_periods = []
     required_frames = duration_seconds * frame_rate
     missing_required = int(required_frames * missing_threshold)
@@ -543,7 +587,7 @@ def detect_intense_periods(ball_tracks_confirmed, frame_dict, duration_seconds=3
     return merged_periods
 
 # 射门检测部分
-def is_approximately_vertical(line, angle_threshold=30):
+def is_approximately_vertical(line, angle_threshold=ANGLE_THRESHOLD_VERTICAL):
     x1, y1, x2, y2 = line[0]
     if x2 - x1 == 0:
         angle = 90
@@ -567,7 +611,7 @@ def get_bounding_box_from_line(line):
     height = abs(y2 - y1)
     return (left, top, width, height)
 
-def process_image(image_path, angle_threshold=30, x_threshold=20):
+def process_image(image_path, angle_threshold=ANGLE_THRESHOLD_VERTICAL, x_threshold=X_THRESHOLD_VERTICAL):
     image = cv2.imread(image_path)
     if image is None:
         logging.error(f"无法读取图像: {image_path}")
@@ -723,19 +767,17 @@ def detect_shots(goalkeeper_results, ball_tracks_confirmed, frame_dict, player_i
 
     for shot_frame in shot_frames:
         # 定义搜索范围前后各15帧
-        search_start = max(1, int(shot_frame) - min_shot_frames_around)
-        search_end = int(shot_frame) + min_shot_frames_around
+        search_start = max(1, int(shot_frame) - MIN_SHOT_FRAMES_AROUND)
+        search_end = int(shot_frame) + MIN_SHOT_FRAMES_AROUND
 
         # 获取最后出现球的位置
         relevant_ball_tracks = [bt for bt in ball_tracks_confirmed if search_start <= bt['frame'] <= search_end and bt['track_id'] is not None]
-        logging.info(f"球最后出现：{relevant_ball_tracks}")
         if not relevant_ball_tracks:
             logging.warning(f"No relevant ball tracks found around shot frame {shot_frame}")
             continue
 
         # 找到球最后出现的位置
         last_ball_track = max(relevant_ball_tracks, key=lambda x: x['frame'])
-        logging.info(f"最后出现球：{last_ball_track}")
         ball_position = last_ball_track['position']
         ball_track_id = last_ball_track['track_id']
 
@@ -755,15 +797,18 @@ def detect_shots(goalkeeper_results, ball_tracks_confirmed, frame_dict, player_i
                     dist_right = distance(ball_position, right_bottom)
                     dist = min(dist_left, dist_right)
                     if dist < min_dist:
-                        logging.info(f"{det['track_id']}离球的距离：{dist}")
                         min_dist = dist
                         shooter_id = det['track_id']
+                        shooter_jersey = player_info[shooter_id]['jersey_number']
+                        shooter_team = player_info[shooter_id]['team']
 
         if shooter_id is not None:
             shots.append({
                 'shot_frame': shot_frame,
                 'goalkeeper_id': goalkeeper_results[shot_frame],
-                'shooter_id': shooter_id
+                'shooter_id': shooter_id,
+                'shooter_jersey': shooter_jersey,
+                'shooter_team': shooter_team
             })
             logging.info(f"Shot detected at frame {shot_frame}: Shooter Track ID {shooter_id}, Goalkeeper Track ID {goalkeeper_results[shot_frame]}")
         else:
@@ -823,83 +868,121 @@ def process_images(frame_dict, folder_path, tracking_files_path=None):
 
     return goalkeeper_results
 
-def main(tracking_files_path, ball_tracks_path, player_info_path, image_folder):
+def generate_seq(task_hash, tracking_files_path = TRACKING_FILES_PATH, ball_tracks_path = BALL_TRACKS_PATH , player_info_path = PLAYER_INFO_PATH, image_folder = IMAGE_FOLDER):
     df = load_csv_multiple(tracking_files_path)
     ball_track_ids = load_ball_tracks(ball_tracks_path)
     player_info = load_player_info(player_info_path)
     frame_dict = build_frame_dict(df)
     ball_tracks_confirmed = confirm_ball_tracks_with_kalman(frame_dict, ball_track_ids)
+    match_info_filename = task_hash + '.json'
+    match_info_path = os.path.join('out', 'match', match_info_filename)
 
-    logging.info("Confirmed Ball Tracks:")
-    for bt in ball_tracks_confirmed:
-        frame = bt['frame']
-        track_id = bt['track_id'] if bt['track_id'] is not None else 'Predicted'
-        position = bt['position']
-        predicted = bt['predicted']
-        logging.info(f"Frame: {frame}, Track ID: {track_id}, Position: {position}, Predicted: {predicted}")
+    with open(match_info_path) as f:
+        match_info_data = json.load(f)
+
+    start_time_stamp = match_info_data['matchInfo']['start_time_stamp']
+    start_time_seconds = convert_time_to_seconds(start_time_stamp)
+
+    events_sequence = []
 
     headers = detect_headers(ball_tracks_confirmed, player_info, frame_dict)
-
-    logging.info("\nDetected Headers:")
     for header in headers:
-        player = player_info.get(header['player_track_id'], {})
-        jersey_number = player.get('jersey_number', 'Unknown')
-        team = player.get('team', 'Unknown')
-        logging.info(f"Frame: {header['frame']}, Player ID: {header['player_track_id']}, Jersey: {jersey_number}, Team: {team}, Direction: {header['direction']}")
+        frame_number = header['frame']
+        timestamp = calculate_timestamp(frame_number, start_time_seconds)
+        event = {
+            "timestamp": timestamp,
+            "type": "header",
+            "team": player_info[header['player_track_id']]['team'],
+            "player": player_info[header['player_track_id']]['jersey_number'],
+            "description": f"Player {player_info[header['player_track_id']]['jersey_number']} performed a header."
+        }
+        events_sequence.append(event)
 
     falls = detect_falls(frame_dict, player_info)
-
-    logging.info("\nDetected Falls:")
     for fall in falls:
-        frame = fall['frame']
-        player_id = fall['player_track_id']
-        jersey_number = fall['jersey_number']
-        team = fall['team']
-        contest_players = fall['contest_players']
-        contest_info = "; ".join([f"Player ID: {cp['player_track_id']}, Jersey: {cp['jersey_number']}, Team: {cp['team']}" for cp in contest_players])
-        logging.info(f"Frame: {frame}, Player ID: {player_id}, Jersey: {jersey_number}, Team: {team}, Contesting With: {contest_info}")
+        frame_number = fall['frame']
+        timestamp = calculate_timestamp(frame_number, start_time_seconds)
+        contest_players_info = [
+            {
+                "team": cp['team'],
+                "jersey": cp['jersey_number']
+            }
+            for cp in fall['contest_players']
+        ]
+        event = {
+            "timestamp": timestamp,
+            "type": "fall",
+            "team": fall['team'],
+            "player": fall['jersey_number'],
+            "description": f"Player {fall['jersey_number']} fell.",
+            "with_player": contest_players_info
+        }
+        events_sequence.append(event)
 
     carries = detect_ball_carries(ball_tracks_confirmed, player_info, frame_dict)
-
-    logging.info("\nDetected Ball Carries:")
     for carry in carries:
-        start_frame = carry['start_frame']
-        end_frame = carry['end_frame']
-        player_id = carry['player_track_id']
-        jersey_number = carry['jersey_number']
-        team = carry['team']
-        logging.info(f"Player ID: {player_id}, Jersey: {jersey_number}, Team: {team}, Start Frame: {start_frame}, End Frame: {end_frame}")
+        start_frame_number = carry['start_frame']
+        timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
+        event = {
+            "timestamp": timestamp,
+            "type": "carry",
+            "team": carry['team'],
+            "player": carry['jersey_number'],
+            "description": f"Player {carry['jersey_number']} is carrying the ball.",
+            "period": carry['end_frame'] - carry['start_frame']
+        }
+        events_sequence.append(event)
 
     passes = detect_passes(ball_tracks_confirmed, player_info, frame_dict)
-
-    logging.info("\nDetected Passes:")
     for p in passes:
-        logging.info(f"From Player ID: {p['from_player_id']}, Jersey: {p['from_jersey_number']}, "
-                    f"To Player ID: {p['to_player_id']}, Jersey: {p['to_jersey_number']}, "
-                    f"Team: {p['team']}, Start Frame: {p['start_frame']}, End Frame: {p['end_frame']}")
+        start_frame_number = p['start_frame']
+        timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
+        event = {
+            "timestamp": timestamp,
+            "type": "pass",
+            "team": p['team'],
+            "player": p['from_jersey_number'],
+            "with_player": {
+                "team": p['team'],
+                "jersey": p['to_jersey_number']
+            },
+            "description": f"Player {p['from_jersey_number']} passed to Player {p['to_jersey_number']}.",
+            "period": p['end_frame'] - p['start_frame']
+        }
+        events_sequence.append(event)
 
     goalkeeper_results = process_images(
         frame_dict=frame_dict,
         folder_path=image_folder,
         tracking_files_path=tracking_files_path,
     )
-
     shots = detect_shots(goalkeeper_results, ball_tracks_confirmed, frame_dict, player_info, image_folder)
-
-    logging.info("\nDetected Shot:")
     for shot in shots:
-        logging.info(f"Shot Frame: {shot['shot_frame']}, Goalkeeper Track ID: {shot['goalkeeper_id']}, Shooter Track ID: {shot['shooter_id']}")
+        frame_number = shot['shot_frame']
+        timestamp = calculate_timestamp(frame_number, start_time_seconds)
+        event = {
+            "timestamp": timestamp,
+            "type": "shot",
+            "team": shot['shooter_team'],
+            "player": shot['shooter_jersey'],
+            "description": f"Player {shot['shooter_jersey']} took a shot."
+        }
+        events_sequence.append(event)
 
     intense_periods = detect_intense_periods(ball_tracks_confirmed, frame_dict)
-
-    logging.info("\nDetected Intense Periods:")
     for period in intense_periods:
-        logging.info(f"Start Frame: {period['start_frame']}, End Frame: {period['end_frame']}")
+        start_frame_number = period['start_frame']
+        timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
+        event = {
+            "timestamp": timestamp,
+            "type": "intense",
+            "description": "Intense period of play.",
+            "period": period['end_frame'] - period['start_frame']
+        }
+        events_sequence.append(event)
 
-if __name__ == "__main__":
-    tracking_files_path = '../GHOST/out/scaled/'
-    ball_tracks_path = '../jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json'
-    player_info_path = '../jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json'
-    image_folder = '../GHOST/datasets/MOT20/test/'
+    cleaned_events = merge_events(events_sequence)
+    match_info_data['events_sequence'] = cleaned_events
 
-    main(tracking_files_path, ball_tracks_path, player_info_path, image_folder)
+    with open(match_info_path, "w") as f:
+        json.dump(match_info_data, f, ensure_ascii=False, indent=4)

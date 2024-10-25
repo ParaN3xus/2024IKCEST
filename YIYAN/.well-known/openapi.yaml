@@ -6,10 +6,10 @@ info:
 servers:
     - url: http://localhost:8081  # 替换成你实际服务启动的地址和端口，调试环境可以是localhost，正式上线需要换成公网IP
 paths:
-    /generate_commentary:
+    /task:
         post:
-            operationId: generateCommentary
-            summary: 上传足球比赛视频链接并生成解说词
+            operationId: createTask
+            summary: 用户提供视频链接，创建解说词生成任务，返回任务创建状态
             requestBody:
                 required: true
                 content:
@@ -18,11 +18,17 @@ paths:
                             $ref: "#/components/schemas/GenerateCommentaryRequest"
             responses:
                 "200":
-                    description: 解说词生成成功
+                    description: 任务已经完成
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/GenerateCommentaryResponse"
+                "202":
+                    description: 任务已创建或者已经启动
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TaskResponse"
                 "400":
                     description: 无效的请求参数
                     content:
@@ -55,7 +61,20 @@ components:
             properties:
                 commentary:
                     type: string
-                    description: 根据视频生成的解说词
+                    description: 根据视频获取的事件流
+
+        TaskResponse:
+            type: object
+            required:
+                - message
+                - task_id
+            properties:
+                message:
+                    type: string
+                    description: 关于任务的状态消息
+                task_id:
+                    type: string
+                    description: 创建的任务ID
 
         ErrorResponse:
             type: object

@@ -6,5 +6,4 @@ requests
 asyncio
 gdown
 opencv-python-headless
-tesseract-ocr
-tesseract-ocr-chi-sim
+paddleocr
