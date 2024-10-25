@@ -7,7 +7,7 @@ from config import VideoProcessConfig, YOLOXConfig
 
 MAX_FRAMES_PER_SEQUENCE = 750
 
-def capture_frames(video_path, output_base_dir=YOLOXConfig.DATASET_DIR):
+def capture_frames(video_path, task_hash, output_base_dir=YOLOXConfig.DATASET_DIR):
     sequence_id = generate_sequence_id(output_base_dir)
     print(f"开始抓取视频帧: {video_path}，序列 ID: {sequence_id}")
 
@@ -112,7 +112,8 @@ def extract_and_save_match_info(frame):
 
     output_dir = os.path.join('out', 'match')
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, 'match_info.json')
+    filename = task_hash + '.json'
+    output_file = os.path.join(output_dir, filename)
 
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(match_info, f, ensure_ascii=False, indent=4)

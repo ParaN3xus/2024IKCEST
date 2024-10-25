@@ -1,46 +1,116 @@
 from flask import Flask, request, send_file, make_response, jsonify
+from video_download.get_web_video import download_video
 from flask_cors import CORS
-import hashlib
 import json
-import uuid
+from datetime import datetime
 from work import *
 from config import YOLOXConfig
 from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-executor = ThreadPoolExecutor(max_workers=5)
-tasks = {}
+executor = ThreadPoolExecutor(max_workers=8)
+tasks_file = 'tasks/tasks.json'
 
 def make_json_response(data, status_code=200):
     response = make_response(json.dumps(data, ensure_ascii=False), status_code)
     response.headers["Content-Type"] = "application/json"
     return response
 
-@app.route("/generate_commentary", methods=['GET'])
-def generate_commentary():
+@app.route("/task", methods=['POST'])
+def check_task():
     try:
-        url = request.args.get('video_url', "")
+        data = request.get_json()
+        url = data.get('video_url', "")
         if not url:
             app.logger.warning("缺少视频链接")
             return make_json_response({"error": "缺少视频链接"}, 400)
-        task_id = hashlib.md5(url.encode()).hexdigest()
         
-        if task_id in tasks:
-            # 检查任务状态
-            future = tasks[task_id]
-            if future.running():
-                return jsonify({"message": "任务正在运行中"}), 202
-            elif future.done():
-                return jsonify({"message": "任务已完成", "result": result}), 200
+        vid_path, task_hash = download_video(url)
+
+        with open('tasks_file.json', 'r') as f:
+            task_data = json.load(f)
+
+        task = next((t for t in task_data['tasks'] if t['id'] == task_hash), None)
+        running_task_exists = any(t['status'] == 'running' for t in task_data['tasks'])
+
+        if task:
+            if task['status'] == "created":
+                if not running_task_exists:
+                    future = executor.submit(run, vid_path, task_hash)
+                    tasks[task_hash] = future
+                    task['status'] = 'running'
+                    with open('tasks_file.json', 'w') as f:
+                        json.dump(task_data, f, indent=4)
+                    return jsonify({"message": "任务已启动", "task_id": task_hash}), 202
+                else:
+                    return jsonify({"message": "任务已创建", "task_id": task_hash}), 202
+
+            elif task['status'] == "running":
+                return jsonify({"message": "任务正在运行中，无需再次创建！"}), 202
+
+            elif task['status'] == "completed":
+                result_filename = task_hash + '.json'
+                result_file_path = os.path.join('out', 'match', result_filename)
+                with open(result_file_path, 'r') as f:
+                    result_data = json.load(f)
+                return jsonify({"message": "任务已完成", "result": result_data}), 200
+
         else:
-            future = executor.submit(run, url)
-            tasks[task_id] = future
-            return jsonify({"message": "任务已启动"}), 202
+            if not running_task_exists:
+                future = executor.submit(run, vid_path, task_hash)
+                tasks[task_hash] = future
+                status = "running"
+            else:
+                status = "created"
+            task_data['tasks'].append({
+                "user": "",
+                "id": task_hash,
+                "status": status,
+                "create_time": datetime.now().isoformat()
+            })
+            with open('tasks_file.json', 'w') as f:
+                json.dump(task_data, f, indent=4)
+            
+            if status == "running":
+                return jsonify({"message": "任务已启动", "task_id": task_hash}), 202
+            else:
+                return jsonify({"message": "任务已创建", "task_id": task_hash}), 202
 
     except Exception as e:
         app.logger.exception("处理请求时出现异常")
-        return jsonify({"error": str(e)}), 500
+        return make_json_response({"error": "处理请求时出现异常"}, 500)
+
+@app.route("/query", methods=['POST'])
+def query_task():
+    try:
+        data = request.get_json()
+        task_id = data.get('task_id', "")
+        if not task_id:
+            app.logger.warning("缺少任务 ID")
+            return make_json_response({"error": "缺少任务 ID"}, 400)
+        
+        with open('tasks_file.json', 'r') as f:
+            task_data = json.load(f)
+
+        task = next((t for t in task_data['tasks'] if t['id'] == task_id), None)
+        if not task:
+            return jsonify({"message": "任务不存在"}), 404
+
+        if task['status'] == "running":
+            return jsonify({"message": "任务正在运行中"}), 200
+        elif task['status'] == "completed":
+            result_filename = task_id + '.json'
+            result_file_path = os.path.join('out', 'match', result_filename)
+            with open(result_file_path, 'r') as f:
+                result_data = json.load(f)
+            return jsonify({"message": "任务已完成", "result": result_data}), 200
+        else:
+            return jsonify({"message": "任务状态异常"}), 500
+
+    except Exception as e:
+        app.logger.exception("处理请求时出现异常")
+        return make_json_response({"error": "处理请求时出现异常"}, 500)
 
 @app.route("/logo.png")
 async def plugin_logo():

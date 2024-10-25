@@ -59,7 +59,7 @@ def identify_teams(average_colors, track_ids_list):
     
     return team_mapping
 
-def main():
+def identify_teams():
     if not os.path.exists(FINAL_RESULTS_FILE):
         print(f"Error: {FINAL_RESULTS_FILE} not found")
         return
@@ -120,8 +120,5 @@ def main():
     
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(final_output, f, ensure_ascii=False, indent=4)
-    
+        
     print(f"All tasks done! See output at: {OUTPUT_FILE}")
-
-if __name__ == "__main__":
-    main()

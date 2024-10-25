@@ -7,11 +7,23 @@ examples:
               # 触发插件
             plugin:
                 # 应当触发的接口operationId
-                operationId: generateCommentary
+                operationId: task
                 # 思考过程，对触发有帮助
                 thoughts: 这是一个生成足球比赛视频解说词的需求
                 requestArguments:
                     video_url: "https://example.com/football-match-video.mp4"
+    - context: # 对话历史
+        - role: user
+          content: 这个id的任务进行得怎么样了？5d41402abc4b2a76b971
+        - role: bot
+            # 触发插件
+          plugin:
+              # 应当触发的接口operationId
+              operationId: query
+              # 思考过程，对触发有帮助
+              thoughts: 查看任务进行状态
+              requestArguments:
+                  task_id: "5d41402abc4b2a76b971"
     # 反例，无需触发此插件的任一某个接口
     - context: # 对话历史
           - role: user
