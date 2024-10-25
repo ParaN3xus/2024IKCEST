@@ -159,8 +159,11 @@ class Predictor(object):
             if self.decoder is not None:
                 outputs = self.decoder(outputs, dtype=outputs.type())
             outputs = postprocess(
-                outputs, self.num_classes, self.confthre,
-                self.nmsthre, class_agnostic=True
+                outputs,
+                self.num_classes,
+                self.confthre,
+                self.nmsthre,
+                class_agnostic=True,
             )
             logger.info("Infer time: {:.4f}s".format(time.time() - t0))
         return outputs, img_info
@@ -303,25 +306,31 @@ def main(exp, args):
         decoder = None
 
     predictor = Predictor(
-        model, exp, COCO_CLASSES, trt_file, decoder,
-        args.device, args.fp16, args.legacy,
+        model,
+        exp,
+        COCO_CLASSES,
+        trt_file,
+        decoder,
+        args.device,
+        args.fp16,
+        args.legacy,
     )
     current_time = time.localtime()
 
     datasets_path = "datasets/MOT20"
-    for type in ["test"]: #["test", "train"]:
+    for type in ["test"]:  # ["test", "train"]:
         clips_path = os.path.join(datasets_path, type)
         for clip_name in sorted(os.listdir(clips_path)):
             imgs_path = os.path.join(clips_path, clip_name, "img1")
             if not os.path.exists(imgs_path):
-                pass #continue
+                pass  # continue
 
             res = []
 
             det_folder = os.path.join(datasets_path + "_dets1", type, clip_name, "det")
             det_filepath = os.path.join(det_folder, "yolox_dets.txt")
 
-            if(os.path.exists(det_filepath)):
+            if os.path.exists(det_filepath):
                 continue
 
             for img_name in sorted(os.listdir(imgs_path)):
@@ -337,28 +346,34 @@ def main(exp, args):
 
                 frame = int(img_name.split(".")[0])
 
-                if(frame % 50 == 0):
+                if frame % 50 == 0:
                     logger.info(f"processing {clip_name} to {frame} frame")
 
-                
                 for bbox in bboxes:
-                    print(int(bbox[6])) if int(bbox[6]) != 2 and int(bbox[6]) != 0  else None
-                    if(int(bbox[6]) == 1):
+                    (
+                        print(int(bbox[6]))
+                        if int(bbox[6]) != 2 and int(bbox[6]) != 0
+                        else None
+                    )
+                    if int(bbox[6]) == 1:
                         continue
-                    
-                    res.append(f"{frame},-1,{bbox[0]},{bbox[1]},{bbox[2] - bbox[0]},{bbox[3] - bbox[1]},{bbox[4]},-1,-1\n")
+
+                    res.append(
+                        f"{frame},-1,{bbox[0]},{bbox[1]},{bbox[2] - bbox[0]},{bbox[3] - bbox[1]},{bbox[4]},-1,{bbox[6]}\n"
+                    )
 
             os.makedirs(det_folder, exist_ok=True)
 
             with open(det_filepath, "w") as f:
                 f.writelines(res)
-            
+
     """
     if args.demo == "image":
         image_demo(predictor, vis_folder, args.path, current_time, args.save_result)
     elif args.demo == "video" or args.demo == "webcam":
         imageflow_demo(predictor, vis_folder, current_time, args)
     """
+
 
 if __name__ == "__main__":
     args = make_parser().parse_args()
