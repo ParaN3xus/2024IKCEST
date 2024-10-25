@@ -19,4 +19,4 @@ def rename_files_to_txt(root):
             print(f"Renamed '{file_name}' to '{new_name}'")
 
 if __name__ == "__main__":
-    rename_files_to_txt("out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1KalmanInactPat:50DetConf:0.45NewTrackConf:0.6")
+    rename_files_to_txt("out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6")

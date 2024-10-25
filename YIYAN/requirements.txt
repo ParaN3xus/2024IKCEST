@@ -1,0 +1,10 @@
+flask[async]
+flask_cors
+opencv-python
+bs4
+requests
+asyncio
+gdown
+opencv-python-headless
+tesseract-ocr
+tesseract-ocr-chi-sim

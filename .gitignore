@@ -357,3 +357,9 @@ jersey-number-pipeline/models/.gitignore
 jersey-number-pipeline/pose/.gitignore
 jersey-number-pipeline/reid/.gitignore
 jersey-number-pipeline/str/parseq/models/.gitignore
+
+
+GHOST/datasets/*
+GHOST/out/*
+jersey-number-pipeline/out/*
+YOLOX/datasets/*

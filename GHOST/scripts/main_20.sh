@@ -1,6 +1,6 @@
 #!/bin/sh
 export PYTHONPATH= # set to your own GHOST path like /root/GHOST
-python tools/main_track.py \
+python main_track.py \
     --det_file yolox_dets.txt \
     --splits mot20_test \
     --config_path config/config_tracker_20.yaml \
