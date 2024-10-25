@@ -61,27 +61,48 @@ def load_and_filter_image(image_path):
     return filtered_pixels
 
 
-def extract_center_average_color(image_path):
-    image = cv2.imread(image_path)
-    if image is None:
-        print(f"Error: {image_path} not found")
-        return np.array([0, 0, 0])
+import matplotlib.pyplot as plt
 
-    # 裁剪中间部分：1/4 高度和 1/2 宽度
-    h, w, _ = image.shape
-    cropped_image = image[h // 4 : 3 * h // 4, w // 4 : 3 * w // 4]
 
-    # 去除草地颜色
-    image_rgb = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-    green_lower = np.array([0, 100, 0])
-    green_upper = np.array([100, 255, 100])
-    grass_mask = cv2.inRange(image_rgb, green_lower, green_upper) > 0
-    filtered_pixels = image_rgb[~grass_mask]
+def extract_center_average_colors(image_path):
+    res = []
+    for path in os.listdir(image_path):
+        image = cv2.imread(os.path.join(image_path, path))
+        if image is None:
+            print(f"Error: {image_path} not found")
+            return np.array([0, 0, 0])
 
-    if filtered_pixels.size == 0:
-        return np.array([0, 0, 0])
+        # 裁剪中间部分：1/4 高度和 1/2 宽度
+        h, w, _ = image.shape
+        cropped_image = image[h // 4 : 2 * h // 4, w // 4 : 3 * w // 4]
 
-    return np.mean(filtered_pixels, axis=0)
+        # 显示裁剪后的图像
+        # plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+        # plt.title("Cropped Center Image")
+        # plt.axis("off")
+        # plt.show()
+
+        # 去除草地颜色
+        image_rgb = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
+        green_lower = np.array([0, 100, 0])
+        green_upper = np.array([100, 255, 100])
+        grass_mask = cv2.inRange(image_rgb, green_lower, green_upper) > 0
+        filtered_pixels = image_rgb[~grass_mask]
+
+        # 显示去除绿色后的图像
+        filtered_image = image_rgb.copy()
+        filtered_image[grass_mask] = [0, 0, 0]  # 将草地像素设为黑色以便观察
+        # plt.imshow(filtered_image)
+        # plt.title("Image After Removing Green")
+        # plt.axis("off")
+        # plt.show()
+
+        if filtered_pixels.size == 0:
+            continue
+
+        res.append(np.mean(filtered_pixels, axis=0))
+
+    return res
 
 
 def compute_average_color(pixels):
@@ -192,10 +213,13 @@ def classify_new_players(average_colors, new_colors, track_ids):
         if team == "B"
     ]
 
+    avg_team_a_color = np.mean(team_a_colors, axis=0)
+    avg_team_b_color = np.mean(team_b_colors, axis=0)
+
     notperson = 0
 
     valid_teams = {"A": [], "B": []}
-    for track_id, color in new_colors.items():
+    for track_id, colors in new_colors.items():
         # according to yolox, this is not a person
         classid = get_class(track_id, ghost_data_dict, yolox_mot20_data_dict)
         if int(classid) != 2:
@@ -207,33 +231,51 @@ def classify_new_players(average_colors, new_colors, track_ids):
             print(f"{track_id} skipped for too less img: {img_count}")
             continue
 
-        min_diff = float("inf")
+        vote_a = 0
+        vote_b = 0
+
+        for color in colors:
+            closest_team = None
+            diff_a = None
+            diff_b = None
+            min_diff = float("inf")
+
+            # 计算新球员颜色与队伍A的平均颜色距离
+            if team_a_colors:
+                diff_a = np.linalg.norm(color - avg_team_a_color)
+                if diff_a < THRESHOLD and diff_a < min_diff:
+                    min_diff = diff_a
+                    closest_team = "A"
+
+            # 计算新球员颜色与队伍B的平均颜色距离
+            if team_b_colors:
+                diff_b = np.linalg.norm(color - avg_team_b_color)
+                if diff_b < THRESHOLD and diff_b < min_diff:
+                    min_diff = diff_b
+                    closest_team = "B"
+
+            # 根据距离最小的队伍对队伍进行投票
+            if not closest_team:
+                continue
+
+            if closest_team == "A":
+                vote_a = vote_a + 1
+            else:
+                vote_b = vote_b + 1
+
         closest_team = None
+        if vote_a > vote_b and vote_a > img_count / 2:
+            closest_team = "A"
+        elif vote_a < vote_b and vote_b > img_count / 2:
+            closest_team = "B"
+        else:
+            if vote_b != 0:
+                print("WTF THEY ARE EQUAL")
 
-        diff_a = None
-        diff_b = None
-        # 计算新球员颜色与队伍A的平均颜色距离
-        if team_a_colors:
-            avg_team_a_color = np.mean(team_a_colors, axis=0)
-            diff_a = np.linalg.norm(color - avg_team_a_color)
-            if diff_a < THRESHOLD and diff_a < min_diff:
-                min_diff = diff_a
-                closest_team = "A"
-
-        # 计算新球员颜色与队伍B的平均颜色距离
-        if team_b_colors:
-            avg_team_b_color = np.mean(team_b_colors, axis=0)
-            diff_b = np.linalg.norm(color - avg_team_b_color)
-            if diff_b < THRESHOLD and diff_b < min_diff:
-                min_diff = diff_b
-                closest_team = "B"
-
-        # 根据距离最小的队伍对新球员进行分类
+        print(f"{ORIGINAL_IMAGES_DIR}{track_id}")
+        print(f"vote: A: {vote_a}, B: {vote_b}, total: {img_count}")
         if closest_team:
             valid_teams[closest_team].append(track_id)
-        else:
-            given_up.append(track_id)
-            print(track_id, diff_a, diff_b)
 
     for track, team in team_mapping.items():
         valid_teams[team].append(track)
@@ -312,8 +354,8 @@ def main():
     for track_id in missing_track_ids:
         if not track_id.startswith("SNMOT"):
             continue
-        image_path = get_first_file(os.path.join(ORIGINAL_IMAGES_DIR, track_id))
-        avg_colors = extract_center_average_color(image_path)
+        image_path = os.path.join(ORIGINAL_IMAGES_DIR, track_id)
+        avg_colors = extract_center_average_colors(image_path)
         new_average_colors[track_id] = avg_colors
 
     final_team_mapping, unknown_team_player = classify_new_players(
