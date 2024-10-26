@@ -18,7 +18,7 @@ yolox_mot20_test_path = "../YOLOX/MOT20_dets1/test/"
 
 MAX_WORKERS = 8  # MAX WORKERS for ThreadPoolExecutor
 FILENAME_PATTERN = re.compile(r"^SNMOT-(\d+_\d+)_(\d{6})\.jpg$")
-THRESHOLD = 100  # 区分类别的阈值
+THRESHOLD = 60  # 区分类别的阈值
 
 
 def get_first_file(directory):
@@ -88,6 +88,11 @@ def load_and_filter_image(image_path):
 
 import matplotlib.pyplot as plt
 
+import os
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 def extract_center_average_colors(image_path):
     res = []
@@ -96,18 +101,23 @@ def extract_center_average_colors(image_path):
         if image is None:
             print(f"Error: {image_path} not found")
             return np.array([0, 0, 0])
-        
-        # image = crop_green_background(image)
+
+        # 显示最初的图像
+        # plt.figure(figsize=(12, 4))
+        # plt.subplot(1, 3, 1)
+        # plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # plt.title("Original Image")
+        # plt.axis("off")
 
         # 裁剪中间部分：1/4 高度和 1/2 宽度
         h, w, _ = image.shape
         cropped_image = image[h // 4 : 2 * h // 4, w // 4 : 3 * w // 4]
 
         # 显示裁剪后的图像
+        # plt.subplot(1, 3, 2)
         # plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
         # plt.title("Cropped Center Image")
         # plt.axis("off")
-        # plt.show()
 
         # 去除草地颜色
         image_rgb = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
@@ -119,9 +129,11 @@ def extract_center_average_colors(image_path):
         # 显示去除绿色后的图像
         filtered_image = image_rgb.copy()
         filtered_image[grass_mask] = [0, 0, 0]  # 将草地像素设为黑色以便观察
+        # plt.subplot(1, 3, 3)
         # plt.imshow(filtered_image)
         # plt.title("Image After Removing Green")
         # plt.axis("off")
+
         # plt.show()
 
         if filtered_pixels.size == 0:
@@ -284,6 +296,8 @@ def classify_new_players(average_colors, new_colors, track_ids):
             # 根据距离最小的队伍对队伍进行投票
             if not closest_team:
                 continue
+
+            print(f"trackid: {track_id}, distance: A: {diff_a}, B: {diff_b}")
 
             if closest_team == "A":
                 vote_a = vote_a + 1
