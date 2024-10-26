@@ -363,3 +363,7 @@ GHOST/datasets/*
 GHOST/out/*
 jersey-number-pipeline/out/*
 YOLOX/datasets/*
+
+*.pyc
+*.mp4
+.git-bak
