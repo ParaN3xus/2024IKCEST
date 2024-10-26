@@ -5,12 +5,13 @@ import json
 from datetime import datetime
 from work import *
 from config import YOLOXConfig
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-executor = ThreadPoolExecutor(max_workers=8)
 tasks_file = 'tasks/tasks.json'
+executor = ThreadPoolExecutor(max_workers=8)
 
 def make_json_response(data, status_code=200):
     response = make_response(json.dumps(data, ensure_ascii=False), status_code)

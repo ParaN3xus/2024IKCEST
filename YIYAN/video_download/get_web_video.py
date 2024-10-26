@@ -43,6 +43,8 @@ def download_video_from_url(video_url, download_dir='downloads'):
         video_id = str(uuid.uuid4())
         local_path = os.path.join(download_dir, video_id, filename)
         os.makedirs(download_dir, exist_ok=True)
+        video_dir = os.path.join(download_dir, video_id)
+        os.makedirs(video_dir, exist_ok=True)
         with open(local_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:

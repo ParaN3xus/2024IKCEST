@@ -42,10 +42,10 @@ MISSING_THRESHOLD = 0.9
 ANGLE_THRESHOLD_VERTICAL = 30
 X_THRESHOLD_VERTICAL = 20
 MIN_SHOT_FRAMES_AROUND = 15
-TRACKING_FILES_PATH = '../GHOST/out/scaled/'
-BALL_TRACKS_PATH = '../jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json'
-PLAYER_INFO_PATH = '../jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json'
-IMAGE_FOLDER = '../GHOST/datasets/MOT20/test/'
+TRACKING_FILES_PATH = '/home/pod/shared-nvme/2024IKCEST/GHOST/out/scaled/'
+BALL_TRACKS_PATH = '/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json'
+PLAYER_INFO_PATH = '/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json'
+IMAGE_FOLDER = '/home/pod/shared-nvme/2024IKCEST/GHOST/datasets/MOT20/test/'
 
 def convert_time_to_seconds(time_str):
     minutes, seconds = map(int, time_str.split(":"))

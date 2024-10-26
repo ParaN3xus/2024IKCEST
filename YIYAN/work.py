@@ -13,12 +13,12 @@ from PIL import Image
 
 # 前面一个需要绝对路径，后面那个用相对路径就行
 links = [
-        ("/path/to/YOLOX/datasets/MOT20_dets1/test/", "../GHOST/datasets/detections_GHOST/MOT20/test"),
-        ("/path/to/YOLOX/datasets/MOT20/test/", "../GHOST/datasets/MOT20/test")
+        ("/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20_dets1/test/", "/home/pod/shared-nvme/2024IKCEST/GHOST/datasets/detections_GHOST/MOT20/test"),
+        ("/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20/test/", "/home/pod/shared-nvme/2024IKCEST/GHOST/datasets/MOT20/test")
     ]
-csv_folder = "../GHOST/out/scaled" # GHOST的放大结果
-images_base_folder = "../jersey-number-pipeline/data/SoccerNet/test/images"
-videos_base_folder = "../YOLOX/datasets/MOT20/test"
+csv_folder = "/home/pod/shared-nvme/2024IKCEST/GHOST/out/scaled" # GHOST的放大结果
+images_base_folder = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/data/SoccerNet/test/images"
+videos_base_folder = "/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20/test"
 task_file = 'tasks/tasks.json'
 
 
@@ -66,20 +66,20 @@ def run_command(command, cwd=None):
         sys.stderr.write(f"An error occurred while running the command '{command}': {str(e)}\n")
 
 def run_yolox_detection():
-    command = f"conda activate YOLOX && python get_dets.py image -f my.py -c best_ckpt.pth --conf 0.25 --nms 0.45 --device gpu"
-    run_command(command, cwd="../YOLOX")
+    command = f"conda activate ikcest2024_env && python get_dets.py image -f my.py -c best_ckpt.pth --conf 0.25 --nms 0.45 --device gpu"
+    run_command(command, cwd="/home/pod/shared-nvme/2024IKCEST/YOLOX")
 
 def run_ghost():
-    command = "conda activate GHOST && bash scripts/main_20.sh"
-    run_command(command, cwd="../GHOST")
-    command = "conda activate GHOST && python rename.py"
-    run_command(command, cwd="../GHOST")
-    command = "conda activate GHOST && python rescale.py"
-    run_command(command, cwd="../GHOST")
+    command = "conda activate ikcest2024_env && bash scripts/main_20.sh"
+    run_command(command, cwd="/home/pod/shared-nvme/2024IKCEST/GHOST")
+    command = "conda activate ikcest2024_env && python rename.py"
+    run_command(command, cwd="/home/pod/shared-nvme/2024IKCEST/GHOST")
+    command = "conda activate ikcest2024_env && python rescale.py"
+    run_command(command, cwd="/home/pod/shared-nvme/2024IKCEST/GHOST")
 
 def run_jersey_number_pipeline():
-    command = "conda activate YOLOX && python3 main.py SoccerNet test"
-    run_command(command, cwd="../jersey-number-pipeline")
+    command = "conda activate ikcest2024_env && python3 main.py SoccerNet test"
+    run_command(command, cwd="/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline")
 
 
 def extract_images(csv_folder, images_base_folder, videos_base_folder, csv_file):
@@ -143,22 +143,22 @@ def run(video_path, task_hash):
     print("======开始分类球员信息======")
     identify_teams()
     print("======开始生成事件流======")
-    gen_event_seq(task_hash)
+    generate_seq(task_hash)
     print("======任务完成，开始清理文件======")
-    with open('tasks_file.json', 'r') as f:
+    with open(task_file, 'r') as f:
         task_data = json.load(f)
     for task in task_data['tasks']:
         if task['id'] == task_hash:
             task['status'] = 'completed'
             break
-    with open('tasks_file.json', 'w') as f:
+    with open(task_file, 'w') as f:
         json.dump(task_data, f, indent=4)
-    shutil.rmtree('../YOLOX/datasets/MOT20/test/')
-    shutil.rmtree('../YOLOX/datasets/MOT20_dets1/test/')
-    shutil.rmtree('../GHOST/out/')
-    shutil.rmtree('../GHOST/datasets/detections_GHOST/MOT20/test/')
-    shutil.rmtree('../jersey-number-pipeline/data/SoccerNet/test/images/')
-    shutil.rmtree('../jersey-number-pipeline/out/SoccerNetResults/')
+#     shutil.rmtree('../YOLOX/datasets/MOT20/test/')
+#     shutil.rmtree('../YOLOX/datasets/MOT20_dets1/test/')
+#     shutil.rmtree('../GHOST/out/')
+#     shutil.rmtree('../GHOST/datasets/detections_GHOST/MOT20/test/')
+#     shutil.rmtree('../jersey-number-pipeline/data/SoccerNet/test/images/')
+#     shutil.rmtree('../jersey-number-pipeline/out/SoccerNetResults/')
     print("======清理完成======")
     
 

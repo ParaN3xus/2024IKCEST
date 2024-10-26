@@ -7,3 +7,5 @@ asyncio
 gdown
 opencv-python-headless
 paddleocr
+paddlepaddle 
+pandas

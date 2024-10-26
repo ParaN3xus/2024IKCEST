@@ -31,7 +31,7 @@ def capture_frames(video_path, task_hash, output_base_dir=YOLOXConfig.DATASET_DI
         raise Exception("无法读取视频的第一帧。")
     
     # 提取比赛信息并保存到JSON
-    extract_and_save_match_info(first_frame)
+    extract_and_save_match_info(first_frame, task_hash)
 
     # 生成seqinfo.ini内容
     create_seqinfo_content(sequence_id, fps, total_frames, width, height, sequence_dir)
@@ -68,7 +68,7 @@ def capture_frames(video_path, task_hash, output_base_dir=YOLOXConfig.DATASET_DI
     update_splits_file(output_base_dir)
 
 
-def extract_and_save_match_info(frame):
+def extract_and_save_match_info(frame, task_hash):
     ocr = PaddleOCR(use_angle_cls=True, lang='ch')
     time_left, time_top, time_width, time_height = 3352, 121, 293, 61
     team1_left, team1_top, team1_width, team1_height = 2450, 118, 336, 74
@@ -168,7 +168,7 @@ def update_splits_file(output_base_dir):
         return
     start = min(sequence_numbers)
     end = max(sequence_numbers) + 1
-    splits_file_path = os.path.join("/root/autodl-tmp/folder/GHOST/data/splits.py")
+    splits_file_path = os.path.join("/home/pod/shared-nvme/2024IKCEST/GHOST/data/splits.py")
 
     if not os.path.exists(splits_file_path):
         print(f"未找到 splits 文件: {splits_file_path}")
