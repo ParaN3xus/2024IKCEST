@@ -8,13 +8,13 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 
-IMAGES_DIR = "../jersey-number-pipeline/out/SoccerNetResults/crops/imgs/"
-ORIGINAL_IMAGES_DIR = "../jersey-number-pipeline/data/SoccerNet/test/images/"
-FINAL_RESULTS_FILE = "../jersey-number-pipeline/out/SoccerNetResults/final_results.json"
-OUTPUT_FILE = "../jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json"
-SOCCER_BALL_FILE = "../jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json"
-ghost_out_path = "../GHOST/out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6"
-yolox_mot20_test_path = "../YOLOX/MOT20_dets1/test/"
+IMAGES_DIR = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/crops/imgs/"
+ORIGINAL_IMAGES_DIR = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/data/SoccerNet/test/images/"
+FINAL_RESULTS_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/final_results.json"
+OUTPUT_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json"
+SOCCER_BALL_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json"
+ghost_out_path = "/home/pod/shared-nvme/2024IKCEST/GHOST/out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6"
+yolox_mot20_test_path = "/home/pod/shared-nvme/2024IKCEST/YOLOX/MOT20_dets1/test/"
 
 MAX_WORKERS = 8  # MAX WORKERS for ThreadPoolExecutor
 FILENAME_PATTERN = re.compile(r"^SNMOT-(\d+_\d+)_(\d{6})\.jpg$")
@@ -326,7 +326,7 @@ def classify_new_players(average_colors, new_colors, track_ids):
     return valid_teams, given_up
 
 
-def main():
+def identify_teams():
     if not os.path.exists(FINAL_RESULTS_FILE):
         print(f"Error: {FINAL_RESULTS_FILE} not found")
         return
@@ -416,7 +416,3 @@ def main():
         f"identified {len(final_output)}, total {len(missing_track_ids) + len(track_ids)}, unknown team {len(unknown_team_player)}"
     )
     print(f"All tasks done! See output at: {OUTPUT_FILE}")
-
-
-if __name__ == "__main__":
-    main()

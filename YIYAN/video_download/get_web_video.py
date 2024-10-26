@@ -12,10 +12,6 @@ def calculate_md5(file_path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def update_tasks_file(hash_value, tasks_file='../YIYAN/tasks/tasks.run'):
-    with open(tasks_file, 'a') as f:
-        f.write(f"{hash_value}\n")
-
 def extract_video_url(webpage_url):
     try:
         response = requests.get(webpage_url)
@@ -52,7 +48,6 @@ def download_video_from_url(video_url, download_dir='downloads'):
 
         print(f"视频下载成功，位于: {local_path}")
         md5_hash = calculate_md5(local_path)[:20]
-        update_tasks_file(md5_hash)
 
         return local_path, md5_hash
     except Exception as e:

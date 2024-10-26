@@ -141,14 +141,14 @@ def create_new_sequence_directory(sequence_id, base_dir):
 
 def create_seqinfo_content(sequence_id, fps, total_frames, width, height, sequence_dir):
     seqinfo_content = f"""[Sequence]
-    name={sequence_id}
-    imDir=img1
-    frameRate={fps}
-    seqLength={MAX_FRAMES_PER_SEQUENCE}
-    imWidth={width}
-    imHeight={height}
-    imExt=.jpg
-    """
+name={sequence_id}
+imDir=img1
+frameRate={fps}
+seqLength={MAX_FRAMES_PER_SEQUENCE}
+imWidth={width}
+imHeight={height}
+imExt=.jpg
+"""
     seqinfo_path = os.path.join(sequence_dir, "seqinfo.ini")
     with open(seqinfo_path, 'w') as configfile:
         configfile.write(seqinfo_content)

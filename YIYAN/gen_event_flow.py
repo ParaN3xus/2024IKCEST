@@ -823,7 +823,7 @@ def process_images(frame_dict, folder_path, tracking_files_path=None):
     image_files = [get_image_path_from_frame(folder_path, frame) for frame in range(use_frame_start, use_frame_end + 1)]  
     frames_with_two_posts = {}
     with ThreadPoolExecutor() as executor:
-        future_to_image = {executor.submit(process_image, img_path, angle_threshold_vertical, x_threshold_vertical): img_path for img_path in image_files}
+        future_to_image = {executor.submit(process_image, img_path, ANGLE_THRESHOLD_VERTICAL, X_THRESHOLD_VERTICAL): img_path for img_path in image_files}
         for future in as_completed(future_to_image):
             img_path = future_to_image[future]
             try:

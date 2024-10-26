@@ -6,17 +6,18 @@ from datetime import datetime
 from work import *
 from config import YOLOXConfig
 import threading
-from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 tasks_file = 'tasks/tasks.json'
-executor = ThreadPoolExecutor(max_workers=8)
 
 def make_json_response(data, status_code=200):
     response = make_response(json.dumps(data, ensure_ascii=False), status_code)
     response.headers["Content-Type"] = "application/json"
     return response
+
+def background_task(vid_path, task_hash):
+    run(vid_path, task_hash)
 
 @app.route("/task", methods=['POST'])
 def check_task():
@@ -29,7 +30,7 @@ def check_task():
         
         vid_path, task_hash = download_video(url)
 
-        with open('tasks_file.json', 'r') as f:
+        with open(tasks_file, 'r') as f:
             task_data = json.load(f)
 
         task = next((t for t in task_data['tasks'] if t['id'] == task_hash), None)
@@ -38,10 +39,10 @@ def check_task():
         if task:
             if task['status'] == "created":
                 if not running_task_exists:
-                    future = executor.submit(run, vid_path, task_hash)
-                    tasks[task_hash] = future
+                    task_thread = threading.Thread(target=background_task, args=(vid_path, task_hash))
+                    task_thread.start()
                     task['status'] = 'running'
-                    with open('tasks_file.json', 'w') as f:
+                    with open(tasks_file, 'w') as f:
                         json.dump(task_data, f, indent=4)
                     return jsonify({"message": "任务已启动", "task_id": task_hash}), 202
                 else:
@@ -59,8 +60,8 @@ def check_task():
 
         else:
             if not running_task_exists:
-                future = executor.submit(run, vid_path, task_hash)
-                tasks[task_hash] = future
+                task_thread = threading.Thread(target=background_task, args=(vid_path, task_hash))
+                task_thread.start()
                 status = "running"
             else:
                 status = "created"
@@ -70,7 +71,7 @@ def check_task():
                 "status": status,
                 "create_time": datetime.now().isoformat()
             })
-            with open('tasks_file.json', 'w') as f:
+            with open(tasks_file, 'w') as f:
                 json.dump(task_data, f, indent=4)
             
             if status == "running":
@@ -91,7 +92,7 @@ def query_task():
             app.logger.warning("缺少任务 ID")
             return make_json_response({"error": "缺少任务 ID"}, 400)
         
-        with open('tasks_file.json', 'r') as f:
+        with open(tasks_file, 'r') as f:
             task_data = json.load(f)
 
         task = next((t for t in task_data['tasks'] if t['id'] == task_id), None)
