@@ -9,9 +9,9 @@ import csv
 import threading
 import subprocess
 import concurrent.futures
+from datetime import datetime
 from PIL import Image
 
-# 前面一个需要绝对路径，后面那个用相对路径就行
 links = [
         ("/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20_dets1/test/", "/home/pod/shared-nvme/2024IKCEST/GHOST/datasets/detections_GHOST/MOT20/test"),
         ("/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20/test/", "/home/pod/shared-nvme/2024IKCEST/GHOST/datasets/MOT20/test")
@@ -20,6 +20,17 @@ csv_folder = "/home/pod/shared-nvme/2024IKCEST/GHOST/out/scaled" # GHOST的放�
 images_base_folder = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/data/SoccerNet/test/images"
 videos_base_folder = "/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20/test"
 task_file = 'tasks/tasks.json'
+
+def clear(directory):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+            else:
+                os.remove(file_path)
+        except Exception as e:
+            print(f'Error: {file_path} : {e}')
 
 
 def create_symlink(source_path, target_path):
@@ -141,7 +152,7 @@ def run(video_path, task_hash):
     print("======开始执行球衣号码识别======")
     run_jersey_number_pipeline()
     print("======开始分类球员信息======")
-    identify_teams()
+    identify_teams(task_hash)
     print("======开始生成事件流======")
     generate_seq(task_hash)
     print("======任务完成，开始清理文件======")
@@ -150,16 +161,32 @@ def run(video_path, task_hash):
     for task in task_data['tasks']:
         if task['id'] == task_hash:
             task['status'] = 'completed'
+            task['complete_time'] = datetime.now().isoformat()
             break
     with open(task_file, 'w') as f:
         json.dump(task_data, f, indent=4)
-#     shutil.rmtree('../YOLOX/datasets/MOT20/test/')
-#     shutil.rmtree('../YOLOX/datasets/MOT20_dets1/test/')
-#     shutil.rmtree('../GHOST/out/')
-#     shutil.rmtree('../GHOST/datasets/detections_GHOST/MOT20/test/')
-#     shutil.rmtree('../jersey-number-pipeline/data/SoccerNet/test/images/')
-#     shutil.rmtree('../jersey-number-pipeline/out/SoccerNetResults/')
+    clear('/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20/test/')
+    clear('/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20_dets1/test/')
+    clear('/home/pod/shared-nvme/2024IKCEST/GHOST/out/')
+    clear('/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/data/SoccerNet/test/images/')
+    clear('/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/')
     print("======清理完成======")
-    
+    with open(task_file, 'r') as f:
+        task_data = json.load(f)
 
+    created_tasks = [task for task in task_data.get('tasks', []) if task.get('status') == 'created']
+    if created_tasks:
+        earliest_task = min(
+            created_tasks,
+            key=lambda x: datetime.fromisoformat(x.get('create_time'))
+        )
+        vid_path = earliest_task.get('vid')
+        new_task_hash = earliest_task.get('id')
+        earliest_task['status'] = 'running'
+        with open(task_file, 'w') as f:
+            json.dump(task_data, f, indent=4)
+        print(f"======开始执行下一个任务: {new_task_hash}======")
+        run(vid_path, new_task_hash)
+    else:
+        print("======所有任务已完成======")
     

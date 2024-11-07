@@ -14,7 +14,7 @@ FINAL_RESULTS_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/ou
 OUTPUT_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/player_team_mapping.json"
 SOCCER_BALL_FILE = "/home/pod/shared-nvme/2024IKCEST/jersey-number-pipeline/out/SoccerNetResults/soccer_ball.json"
 ghost_out_path = "/home/pod/shared-nvme/2024IKCEST/GHOST/out/yolox_dets_OnTheFly:0_each_sample2:0.8:LastFrame:0.7LenThresh:0RemUnconf:0.0LastNFrames:10MM:1sum_0.8InactPat:50DetConf:0.45NewTrackConf:0.6"
-yolox_mot20_test_path = "/home/pod/shared-nvme/2024IKCEST/YOLOX/MOT20_dets1/test/"
+yolox_mot20_test_path = "/home/pod/shared-nvme/2024IKCEST/YOLOX/datasets/MOT20_dets1/test/"
 
 MAX_WORKERS = 8  # MAX WORKERS for ThreadPoolExecutor
 FILENAME_PATTERN = re.compile(r"^SNMOT-(\d+_\d+)_(\d{6})\.jpg$")
@@ -181,7 +181,7 @@ def load_nested_csv_files_as_dict(
     return data_dict
 
 
-def identify_teams(average_colors, track_ids_list):
+def identify_team(average_colors, track_ids_list):
     valid_data = [
         (track_id, color)
         for track_id, color in zip(track_ids_list, average_colors)
@@ -233,10 +233,8 @@ def classify_new_players(average_colors, new_colors, track_ids):
     ghost_data_dict = load_csv_files_as_dict(ghost_out_path)
     yolox_mot20_data_dict = load_nested_csv_files_as_dict(yolox_mot20_test_path)
 
-    # 使用 identify_teams 构建 team_mapping
-    team_mapping = identify_teams(
-        average_colors, track_ids
-    )  # 使用已有的identify_teams方法
+    # 使用 identify_team 构建 team_mapping
+    team_mapping = identify_team(average_colors, track_ids)  # 使用已有的 identify_team 方法
 
     given_up = []
 
@@ -252,22 +250,30 @@ def classify_new_players(average_colors, new_colors, track_ids):
         if team == "B"
     ]
 
-    avg_team_a_color = np.mean(team_a_colors, axis=0)
-    avg_team_b_color = np.mean(team_b_colors, axis=0)
+    # 计算队伍A和队伍B的平均颜色并转换为列表
+    if team_a_colors:
+        avg_team_a_color = np.mean(team_a_colors, axis=0).astype(int).tolist()
+    else:
+        avg_team_a_color = [0, 0, 0]
+
+    if team_b_colors:
+        avg_team_b_color = np.mean(team_b_colors, axis=0).astype(int).tolist()
+    else:
+        avg_team_b_color = [0, 0, 0]
 
     notperson = 0
 
     valid_teams = {"A": [], "B": []}
     for track_id, colors in new_colors.items():
-        # according to yolox, this is not a person
+        # 根据 YOLOX 分类，排除非人物
         classid = get_class(track_id, ghost_data_dict, yolox_mot20_data_dict)
         if int(classid) != 2:
-            notperson = notperson + 1
+            notperson += 1
             continue
 
         img_count = len(os.listdir(os.path.join(ORIGINAL_IMAGES_DIR, track_id)))
         if img_count <= 10:
-            print(f"{track_id} skipped for too less img: {img_count}")
+            print(f"{track_id} skipped for too few images: {img_count}")
             continue
 
         vote_a = 0
@@ -281,28 +287,25 @@ def classify_new_players(average_colors, new_colors, track_ids):
 
             # 计算新球员颜色与队伍A的平均颜色距离
             if team_a_colors:
-                diff_a = np.linalg.norm(color - avg_team_a_color)
+                diff_a = np.linalg.norm(color - np.array(avg_team_a_color))
                 if diff_a < THRESHOLD and diff_a < min_diff:
                     min_diff = diff_a
                     closest_team = "A"
 
             # 计算新球员颜色与队伍B的平均颜色距离
             if team_b_colors:
-                diff_b = np.linalg.norm(color - avg_team_b_color)
+                diff_b = np.linalg.norm(color - np.array(avg_team_b_color))
                 if diff_b < THRESHOLD and diff_b < min_diff:
                     min_diff = diff_b
                     closest_team = "B"
 
             # 根据距离最小的队伍对队伍进行投票
-            if not closest_team:
-                continue
-
-            print(f"trackid: {track_id}, distance: A: {diff_a}, B: {diff_b}")
-
-            if closest_team == "A":
-                vote_a = vote_a + 1
-            else:
-                vote_b = vote_b + 1
+            if closest_team:
+                print(f"trackid: {track_id}, distance: A: {diff_a}, B: {diff_b}")
+                if closest_team == "A":
+                    vote_a += 1
+                else:
+                    vote_b += 1
 
         closest_team = None
         if vote_a > vote_b and vote_a > img_count / 2:
@@ -323,10 +326,14 @@ def classify_new_players(average_colors, new_colors, track_ids):
 
     print(f"not person: {notperson}")
 
-    return valid_teams, given_up
+    return valid_teams, given_up, avg_team_a_color, avg_team_b_color
 
 
-def identify_teams():
+
+def identify_teams(task_hash):
+    match_info_filename = task_hash + '.json'
+    match_info_path = os.path.join('out', 'match', match_info_filename)
+
     if not os.path.exists(FINAL_RESULTS_FILE):
         print(f"Error: {FINAL_RESULTS_FILE} not found")
         return
@@ -344,9 +351,7 @@ def identify_teams():
             trackid_to_images[track_id].append(filepath)
 
     if not trackid_to_images:
-        print(
-            f"Error: Can not find any image files matching the pattern at {IMAGES_DIR} "
-        )
+        print(f"Error: Can not find any image files matching the pattern at {IMAGES_DIR}")
         return
 
     track_ids = list(trackid_to_images.keys())
@@ -368,9 +373,7 @@ def identify_teams():
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         future_to_track = {
-            executor.submit(
-                process_track_images, track_id, trackid_to_images[track_id]
-            ): track_id
+            executor.submit(process_track_images, track_id, trackid_to_images[track_id]): track_id
             for track_id in track_ids
         }
         for future in as_completed(future_to_track):
@@ -399,7 +402,8 @@ def identify_teams():
         avg_colors = extract_center_average_colors(image_path)
         new_average_colors[track_id] = avg_colors
 
-    final_team_mapping, unknown_team_player = classify_new_players(
+    # 获取 classify_new_players 返回的额外值
+    final_team_mapping, unknown_team_player, avg_team_a_color, avg_team_b_color = classify_new_players(
         average_colors, new_average_colors, track_ids
     )
 
@@ -412,7 +416,21 @@ def identify_teams():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(final_output, f, ensure_ascii=False, indent=4)
 
+    team_color_data = {
+        "A": avg_team_a_color,
+        "B": avg_team_b_color
+    }
+
+    with open(match_info_path, "r", encoding="utf-8") as f:
+        match_info = json.load(f)
+
+    match_info["team_color"] = team_color_data
+    with open(match_info_path, "w", encoding="utf-8") as f:
+        json.dump(match_info, f, ensure_ascii=False, indent=4)
+
     print(
-        f"identified {len(final_output)}, total {len(missing_track_ids) + len(track_ids)}, unknown team {len(unknown_team_player)}"
+        f"Identified {len(final_output)} players, total {len(missing_track_ids) + len(track_ids)}, unknown team {len(unknown_team_player)}"
     )
     print(f"All tasks done! See output at: {OUTPUT_FILE}")
+
+

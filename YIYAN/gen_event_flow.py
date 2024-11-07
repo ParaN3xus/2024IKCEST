@@ -58,33 +58,86 @@ def calculate_timestamp(frame_number, start_time_seconds, fps=30):
     return f"{int(minutes)}:{int(seconds):02d}.{int(milliseconds):03d}"
 
 def merge_events(events):
-    def parse_timestamp(ts):
-        mins, secs = map(float, ts.split(':'))
-        return int(mins * 60 * 1000 + secs * 1000)
+    """
+    Merges similar events in a list of event strings based on a time threshold.
+
+    Parameters:
+        events (list of str): List of event strings.
+
+    Returns:
+        list of str: Merged list of event strings.
+    """
     
-    def merge_similar_events(events, time_threshold_ms):
+    def parse_event(event_str):
+        """
+        Parses an event string to extract timestamp, type, team, and player information.
+
+        Parameters:
+            event_str (str): The event string to parse.
+            
+        Returns:
+            dict: Parsed event components.
+        """
+        # Regular expression to extract components from the event string
+        pattern = r'\[(\d+):(\d+\.\d+)\]\s+(\w+)\s+by\s+Team\s+(\w+)(?:,\s+Player\s+#(\d+))?:'
+        match = re.match(pattern, event_str)
+        
+        if match:
+            minutes = int(match.group(1))
+            seconds = float(match.group(2))
+            timestamp_ms = int(minutes * 60 * 1000 + seconds * 1000)
+            event_type = match.group(3).lower()
+            team = match.group(4)
+            player = match.group(5) if match.group(5) else None
+            return {
+                'timestamp_ms': timestamp_ms,
+                'type': event_type,
+                'team': team,
+                'player': player,
+                'original_str': event_str
+            }
+        else:
+            return None
+
+    def merge_similar_events(parsed_events, time_threshold_ms):
         merged_events = []
         last_event = None
         
-        for event in events:
-            if last_event and event['type'] == last_event['type'] and event['team'] == last_event['team'] and event['player'] == last_event['player']:
-                current_time = parse_timestamp(event['timestamp'])
-                last_time = parse_timestamp(last_event['timestamp'])
-                if current_time - last_time <= time_threshold_ms:
+        for event in parsed_events:
+            if last_event:
+                if (event['type'] == last_event['type'] and
+                    event['team'] == last_event['team'] and
+                    event['player'] == last_event['player'] and
+                    (event['timestamp_ms'] - last_event['timestamp_ms']) <= time_threshold_ms):
                     continue
             
             if last_event:
                 merged_events.append(last_event)
             
             last_event = event
+        
         if last_event:
             merged_events.append(last_event)
-
+        
         return merged_events
 
-    events.sort(key=lambda x: parse_timestamp(x['timestamp']))
-    merged_events = merge_similar_events(events, time_threshold_ms=333)
-    return merged_events
+    def format_event(event):
+        return event['original_str']
+
+    # Step 1: Parse all event strings
+    parsed_events = [parse_event(event) for event in events]
+    parsed_events = [e for e in parsed_events if e is not None]
+    
+    # Step 2: Sort events based on timestamp
+    parsed_events.sort(key=lambda x: x['timestamp_ms'])
+    
+    # Step 3: Merge similar events within the time threshold (e.g., 333 ms)
+    time_threshold_ms = 333
+    merged_parsed_events = merge_similar_events(parsed_events, time_threshold_ms)
+    
+    # Step 4: Convert merged parsed events back to strings
+    merged_event_strings = [format_event(event) for event in merged_parsed_events]
+    return merged_event_strings
 
 def load_csv_multiple(tracking_files_path):
     all_files = sorted(glob.glob(os.path.join(tracking_files_path, 'SNMOT-*.txt')))
@@ -298,6 +351,7 @@ def detect_headers(ball_tracks_confirmed, player_info, frame_dict, small_window=
                         post_frames_end = min(len(ball_tracks_sorted), i + post_header_frames + 1)
                         visible_count = sum([not ball_tracks_sorted[j]['predicted'] for j in range(post_frames_start, post_frames_end)])
 
+                        direction = "DONT MENTION DIRECTION"
                         if visible_count >= min_visible_frames:
                             if movement_vector[0] > 0:
                                 direction = 'right'
@@ -311,6 +365,7 @@ def detect_headers(ball_tracks_confirmed, player_info, frame_dict, small_window=
                                     'player_track_id': nearest_player_id,
                                     'direction': direction
                                 })
+                      
     return headers
 
 def detect_falls(frame_dict, player_info, distance_threshold=DISTANCE_THRESHOLD, min_fall_frames=MIN_FALL_FRAMES):
@@ -868,7 +923,10 @@ def process_images(frame_dict, folder_path, tracking_files_path=None):
 
     return goalkeeper_results
 
-def generate_seq(task_hash, tracking_files_path = TRACKING_FILES_PATH, ball_tracks_path = BALL_TRACKS_PATH , player_info_path = PLAYER_INFO_PATH, image_folder = IMAGE_FOLDER):
+import os
+import json
+
+def generate_seq(task_hash, tracking_files_path=TRACKING_FILES_PATH, ball_tracks_path=BALL_TRACKS_PATH, player_info_path=PLAYER_INFO_PATH, image_folder=IMAGE_FOLDER):
     df = load_csv_multiple(tracking_files_path)
     ball_track_ids = load_ball_tracks(ball_tracks_path)
     player_info = load_player_info(player_info_path)
@@ -889,67 +947,50 @@ def generate_seq(task_hash, tracking_files_path = TRACKING_FILES_PATH, ball_trac
     for header in headers:
         frame_number = header['frame']
         timestamp = calculate_timestamp(frame_number, start_time_seconds)
-        event = {
-            "timestamp": timestamp,
-            "type": "header",
-            "team": player_info[header['player_track_id']]['team'],
-            "player": player_info[header['player_track_id']]['jersey_number'],
-            "description": f"Player {player_info[header['player_track_id']]['jersey_number']} performed a header."
-        }
-        events_sequence.append(event)
+        team = player_info[header['player_track_id']]['team']
+        jersey_number = player_info[header['player_track_id']]['jersey_number']
+        direction = header['direction']
+        event_str = f"[{timestamp}] Header by Team {team}, Player #{jersey_number}: Player {jersey_number} performed a header. direction: {direction}."
+        events_sequence.append(event_str)
 
     falls = detect_falls(frame_dict, player_info)
     for fall in falls:
         frame_number = fall['frame']
         timestamp = calculate_timestamp(frame_number, start_time_seconds)
-        contest_players_info = [
-            {
-                "team": cp['team'],
-                "jersey": cp['jersey_number']
-            }
-            for cp in fall['contest_players']
-        ]
-        event = {
-            "timestamp": timestamp,
-            "type": "fall",
-            "team": fall['team'],
-            "player": fall['jersey_number'],
-            "description": f"Player {fall['jersey_number']} fell.",
-            "with_player": contest_players_info
-        }
-        events_sequence.append(event)
+        team = fall['team']
+        jersey_number = fall['jersey_number']
+        contest_players_info = ", ".join([f"Team {cp['team']} Player #{cp['jersey_number']}" for cp in fall['contest_players']])
+        event_str = (
+            f"[{timestamp}] Fall by Team {team}, Player #{jersey_number}: "
+            f"Player {jersey_number} fell with {contest_players_info}."
+        )
+        events_sequence.append(event_str)
 
     carries = detect_ball_carries(ball_tracks_confirmed, player_info, frame_dict)
     for carry in carries:
         start_frame_number = carry['start_frame']
         timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
-        event = {
-            "timestamp": timestamp,
-            "type": "carry",
-            "team": carry['team'],
-            "player": carry['jersey_number'],
-            "description": f"Player {carry['jersey_number']} is carrying the ball.",
-            "period": carry['end_frame'] - carry['start_frame']
-        }
-        events_sequence.append(event)
+        team = carry['team']
+        jersey_number = carry['jersey_number']
+        duration = (carry['end_frame'] - carry['start_frame'])/30
+        event_str = (
+            f"[{timestamp}] Carry by Team {team}, Player #{jersey_number}: "
+            f"Player {jersey_number} is carrying the ball for {duration} seconds."
+        )
+        events_sequence.append(event_str)
 
     passes = detect_passes(ball_tracks_confirmed, player_info, frame_dict)
     for p in passes:
         start_frame_number = p['start_frame']
         timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
-        event = {
-            "timestamp": timestamp,
-            "type": "pass",
-            "team": p['team'],
-            "player": p['from_jersey_number'],
-            "with_player": {
-                "team": p['team'],
-                "jersey": p['to_jersey_number']
-            },
-            "description": f"Player {p['from_jersey_number']} passed to Player {p['to_jersey_number']}.",
-            "period": p['end_frame'] - p['start_frame']
-        }
-        events_sequence.append(event)
+        team = p['team']
+        from_jersey = p['from_jersey_number']
+        to_jersey = p['to_jersey_number']
+        event_str = (
+            f"[{timestamp}] Pass by Team {team}: "
+            f"Player {from_jersey} passed to Player {to_jersey}."
+        )
+        events_sequence.append(event_str)
 
     goalkeeper_results = process_images(
         frame_dict=frame_dict,
@@ -960,29 +1001,29 @@ def generate_seq(task_hash, tracking_files_path = TRACKING_FILES_PATH, ball_trac
     for shot in shots:
         frame_number = shot['shot_frame']
         timestamp = calculate_timestamp(frame_number, start_time_seconds)
-        event = {
-            "timestamp": timestamp,
-            "type": "shot",
-            "team": shot['shooter_team'],
-            "player": shot['shooter_jersey'],
-            "description": f"Player {shot['shooter_jersey']} took a shot."
-        }
-        events_sequence.append(event)
+        team = shot['shooter_team']
+        jersey_number = shot['shooter_jersey']
+        event_str = f"[{timestamp}] Shot by Team {team}, Player #{jersey_number}: Player {jersey_number} took a shot."
+        events_sequence.append(event_str)
 
     intense_periods = detect_intense_periods(ball_tracks_confirmed, frame_dict)
     for period in intense_periods:
         start_frame_number = period['start_frame']
         timestamp = calculate_timestamp(start_frame_number, start_time_seconds)
-        event = {
-            "timestamp": timestamp,
-            "type": "intense",
-            "description": "Intense period of play.",
-            "period": period['end_frame'] - period['start_frame']
-        }
-        events_sequence.append(event)
+        duration = (period['end_frame'] - period['start_frame'])/30
+        event_str = (
+            f"[{timestamp}] Intense Period: "
+            f"An intense period of play lasting {duration} seconds."
+        )
+        events_sequence.append(event_str)
 
     cleaned_events = merge_events(events_sequence)
+    print(cleaned_events)
     match_info_data['events_sequence'] = cleaned_events
+    match_info_data['requirements'] = """
+    **如果球员的球衣号为-1, 不要提及这个球衣号!, 使用: 他, xx队;等词语指代即可!**
+    **不要在解说中插入持续时间! 不要在解说中插入持续时间! 但是可以使用: 很短, 长时间等模糊的词!**
+    """
 
     with open(match_info_path, "w") as f:
         json.dump(match_info_data, f, ensure_ascii=False, indent=4)

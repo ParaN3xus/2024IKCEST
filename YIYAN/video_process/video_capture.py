@@ -66,26 +66,19 @@ def capture_frames(video_path, task_hash, output_base_dir=YOLOXConfig.DATASET_DI
     cap.release()
     print(f"总共抓取到 {saved_frame_count - 1} 帧.")
     update_splits_file(output_base_dir)
+    print("======清理视频======")
+    os.remove(video_path)
 
 
 def extract_and_save_match_info(frame, task_hash):
     ocr = PaddleOCR(use_angle_cls=True, lang='ch')
     time_left, time_top, time_width, time_height = 3352, 121, 293, 61
     team1_left, team1_top, team1_width, team1_height = 2450, 118, 336, 74
-    team2_left, team2_top, team2_width, team2_height = 2896, 119, 333, 69
+    team2_left, team2_top, team2_width, team2_height = 2896, 119, 330, 69
 
     time_roi = frame[time_top:time_top + time_height, time_left:time_left + time_width]
     team1_roi = frame[team1_top:team1_top + team1_height, team1_left:team1_left + team1_width]
     team2_roi = frame[team2_top:team2_top + team2_height, team2_left:team2_left + team2_width]
-
-    def preprocess_image(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        return thresh
-
-    time_roi_processed = preprocess_image(time_roi)
-    team1_roi_processed = preprocess_image(team1_roi)
-    team2_roi_processed = preprocess_image(team2_roi)
 
     def extract_text(roi_image):
         result = ocr.ocr(roi_image, cls=True)
@@ -95,9 +88,9 @@ def extract_and_save_match_info(frame, task_hash):
                 texts.append(text_line[1][0])
         return texts
 
-    time_text = extract_text(time_roi_processed)
-    team1_text = extract_text(team1_roi_processed)
-    team2_text = extract_text(team2_roi_processed)
+    time_text = extract_text(time_roi)
+    team1_text = extract_text(team1_roi)
+    team2_text = extract_text(team2_roi)
 
     match_info = {
         "matchInfo": {
@@ -186,3 +179,4 @@ def update_splits_file(output_base_dir):
         file.writelines(lines)
 
     print(f"已更新 {splits_file_path}")
+    

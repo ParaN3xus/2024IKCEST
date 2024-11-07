@@ -26,9 +26,12 @@ def check_task():
         url = data.get('video_url', "")
         if not url:
             app.logger.warning("缺少视频链接")
-            return make_json_response({"error": "缺少视频链接"}, 400)
+            return make_json_response({"error": "缺少视频链接"}, 200)
         
         vid_path, task_hash = download_video(url)
+
+        if not task_hash:
+            return make_json_response({"error": "视频解析出错，请确保您提供的链接中包含可下载的视频。"}, 200)
 
         with open(tasks_file, 'r') as f:
             task_data = json.load(f)
@@ -44,12 +47,12 @@ def check_task():
                     task['status'] = 'running'
                     with open(tasks_file, 'w') as f:
                         json.dump(task_data, f, indent=4)
-                    return jsonify({"message": "任务已启动", "task_id": task_hash}), 202
+                    return jsonify({"message": "任务已启动", "task_id": task_hash}), 200
                 else:
-                    return jsonify({"message": "任务已创建", "task_id": task_hash}), 202
+                    return jsonify({"message": "任务已创建", "task_id": task_hash}), 200
 
             elif task['status'] == "running":
-                return jsonify({"message": "任务正在运行中，无需再次创建！"}), 202
+                return jsonify({"message": "任务正在运行中，无需再次创建！"}), 200
 
             elif task['status'] == "completed":
                 result_filename = task_hash + '.json'
@@ -67,21 +70,23 @@ def check_task():
                 status = "created"
             task_data['tasks'].append({
                 "user": "",
+                "vid": vid_path,
                 "id": task_hash,
                 "status": status,
-                "create_time": datetime.now().isoformat()
+                "create_time": datetime.now().isoformat(),
+                "complete_time": ""
             })
             with open(tasks_file, 'w') as f:
                 json.dump(task_data, f, indent=4)
             
             if status == "running":
-                return jsonify({"message": "任务已启动", "task_id": task_hash}), 202
+                return jsonify({"message": "任务已启动", "task_id": task_hash}), 200
             else:
-                return jsonify({"message": "任务已创建", "task_id": task_hash}), 202
+                return jsonify({"message": "任务已创建", "task_id": task_hash}), 200
 
     except Exception as e:
         app.logger.exception("处理请求时出现异常")
-        return make_json_response({"error": "处理请求时出现异常"}, 500)
+        return make_json_response({"error": "处理请求时出现异常"}, 200)
 
 @app.route("/query", methods=['POST'])
 def query_task():
@@ -90,14 +95,14 @@ def query_task():
         task_id = data.get('task_id', "")
         if not task_id:
             app.logger.warning("缺少任务 ID")
-            return make_json_response({"error": "缺少任务 ID"}, 400)
+            return make_json_response({"error": "缺少任务 ID"}, 200)
         
         with open(tasks_file, 'r') as f:
             task_data = json.load(f)
 
         task = next((t for t in task_data['tasks'] if t['id'] == task_id), None)
         if not task:
-            return jsonify({"message": "任务不存在"}), 404
+            return jsonify({"message": "任务不存在"}), 200
 
         if task['status'] == "running":
             return jsonify({"message": "任务正在运行中"}), 200
@@ -108,11 +113,11 @@ def query_task():
                 result_data = json.load(f)
             return jsonify({"message": "任务已完成", "result": result_data}), 200
         else:
-            return jsonify({"message": "任务状态异常"}), 500
+            return jsonify({"message": "任务正在排队处理中", "task_id": task_id}), 200
 
     except Exception as e:
         app.logger.exception("处理请求时出现异常")
-        return make_json_response({"error": "处理请求时出现异常"}, 500)
+        return make_json_response({"error": "处理请求时出现异常"}, 200)
 
 @app.route("/logo.png")
 async def plugin_logo():
