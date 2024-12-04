@@ -367,3 +367,5 @@ YOLOX/datasets/*
 *.pyc
 *.mp4
 .git-bak
+
+.vscode
